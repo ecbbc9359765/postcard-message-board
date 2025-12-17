@@ -9,7 +9,7 @@
     --primary-font: 'Noto Sans TC', sans-serif;
     
     /* 修改這裡：明信片手寫區使用思源宋體 (文青復古感，支援完整繁體中文) */
-    --handwritten-font: 'Noto Serif TC', serif; 
+    --handwritten-font: 'Huninn', serif; 
 }
 
 * {
