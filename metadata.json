@@ -1,0 +1,5 @@
+{
+  "name": "Vintage Postcards",
+  "description": "A serverless message board with a vintage postcard aesthetic hanging on ropes.",
+  "requestFramePermissions": []
+}
