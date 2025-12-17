@@ -1,11 +1,15 @@
 :root {
-    --bg-wood: #dcbfa6; /* Fallback */
+    --bg-wood: #dcbfa6;
     --rope-color: #8d6e63;
     --paper-color: #fdfbf7;
     --text-color: #4a4a4a;
-    --accent-color: #c0392b; /* Postmark red */
-    --primary-font: 'Zen Maru Gothic', sans-serif;
-    --handwritten-font: 'Zen Maru Gothic', cursive; /* Using Zen Maru as handwritten proxy */
+    --accent-color: #c0392b; 
+    
+    /* 修改這裡：介面使用思源黑體 (易讀) */
+    --primary-font: 'Noto Sans TC', sans-serif;
+    
+    /* 修改這裡：明信片手寫區使用思源宋體 (文青復古感，支援完整繁體中文) */
+    --handwritten-font: 'Noto Serif TC', serif; 
 }
 
 * {
