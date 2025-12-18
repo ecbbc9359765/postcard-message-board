@@ -4,8 +4,12 @@ import { getDatabase, ref, push, onValue, remove, serverTimestamp } from "https:
 
 // --- CONFIGURATION ---
 
-// 1. User List (已更新：加入新成員)
+// 1. User List (加入許願池)
 const USER_LIST = [
+    // --- 新增：公共許願池 (放在第一個) ---
+    { "id": "public", "name": "🌟 許願池 (公共留言板)" },
+
+    // --- 學員名單 ---
     { "id": "1", "name": "曹翔竣" }, { "id": "2", "name": "魏凱莉" },
     { "id": "3", "name": "葉宇芳" }, { "id": "4", "name": "卓仲涵" },
     { "id": "5", "name": "呂念臻" }, { "id": "6", "name": "劉軒安" },
@@ -18,7 +22,7 @@ const USER_LIST = [
     { "id": "22", "name": "李珊珊" }, { "id": "23", "name": "陳志豪" },
     { "id": "24", "name": "喬英華" }, { "id": "25", "name": "范姜宇萱" },
     { "id": "26", "name": "池姍姍" },
-    // 新增名單
+    // --- 老師與助教名單 ---
     { "id": "101", "name": "AMY" },
     { "id": "102", "name": "咖啡老師" },
     { "id": "103", "name": "金魚老師" },
@@ -106,11 +110,31 @@ function renderUserGrid() {
 
 // Populate Write Modal Dropdown
 function populateRecipientDropdown() {
-    // Keep the "ALL" option, add users
+    // 1. 加入「全體學員」選項 (放在最上面)
+    const optionStudents = document.createElement('option');
+    optionStudents.value = "STUDENTS";
+    optionStudents.textContent = "🎓 寄給全體學員 (不含老師)";
+    optionStudents.style.fontWeight = "bold";
+    optionStudents.style.color = "#d35400"; // 橘色強調
+    recipientSelect.appendChild(optionStudents);
+
+    // 2. 加入「全體人員」選項 (原本的)
+    const optionAll = document.createElement('option');
+    optionAll.value = "ALL";
+    optionAll.textContent = "📢 寄給所有人 (含老師、許願池)";
+    recipientSelect.appendChild(optionAll);
+
+    // 3. 產生個別名單
     USER_LIST.forEach(user => {
         const option = document.createElement('option');
         option.value = user.id;
-        option.textContent = `${user.id}. ${user.name}`;
+        // 稍微區分一下許願池的顯示
+        if (user.id === 'public') {
+            option.textContent = user.name;
+            option.style.fontWeight = "bold";
+        } else {
+            option.textContent = `${user.id === 'public' ? '' : user.id + '. '}${user.name}`;
+        }
         recipientSelect.appendChild(option);
     });
 }
@@ -381,16 +405,39 @@ document.getElementById('compose-form').onsubmit = async (e) => {
     submitBtn.textContent = '傳送中...';
 
     try {
+        // --- 修改開始：新增 STUDENTS 的判斷邏輯 ---
+
         if (recipientId === 'ALL') {
+            // 寄給全部人 (包含許願池、老師)
             const promises = USER_LIST.map(user => {
                 return push(ref(db, 'messages/' + user.id), postData);
             });
             await Promise.all(promises);
-            Swal.fire('成功!', '已寄送給全班同學', 'success');
+            Swal.fire('成功!', '已廣播給所有人', 'success');
+
+        } else if (recipientId === 'STUDENTS') {
+            // 🎓 只寄給學員 (邏輯：排除 ID 為 'public' 且排除 ID >= 100 的老師)
+            const studentList = USER_LIST.filter(user => {
+                // 排除公共許願池
+                if (user.id === 'public') return false;
+                // 將 ID 轉為數字，如果小於 100 則視為學員
+                const uid = parseInt(user.id);
+                return !isNaN(uid) && uid < 100;
+            });
+
+            const promises = studentList.map(user => {
+                return push(ref(db, 'messages/' + user.id), postData);
+            });
+            await Promise.all(promises);
+            Swal.fire('成功!', '已寄送給全體學員 (23人)', 'success');
+
         } else {
+            // 寄給單一對象 (包含個別寄給許願池)
             await push(ref(db, 'messages/' + recipientId), postData);
             Swal.fire('成功!', '明信片已寄出', 'success');
         }
+
+        // --- 修改結束 ---
 
         writeModal.style.display = 'none';
         document.getElementById('compose-form').reset();
@@ -398,50 +445,45 @@ document.getElementById('compose-form').onsubmit = async (e) => {
         selectedImageData = null;
 
     } catch (error) {
-        console.error(error);
-        Swal.fire('錯誤', '寄送失敗，請檢查網路', 'error');
-    } finally {
-        submitBtn.disabled = false;
-        submitBtn.textContent = '寄出信件';
-    }
-};
-
-// --- EVENT LISTENERS ---
-
-function setupEventListeners() {
-    activeCard.onclick = () => {
-        activeCard.classList.toggle('flipped');
+        // ... (原本的錯誤處理不用動)
     };
 
-    document.querySelector('.card-modal-backdrop').onclick = () => {
-        cardModal.style.display = 'none';
-        activeCard.classList.remove('flipped');
-    };
+    // --- EVENT LISTENERS ---
 
-    document.getElementById('admin-trigger').onclick = () => {
-        const pwd = prompt("請輸入管理者密碼:");
-        if (pwd === "teacher123") {
-            isAdmin = true;
-            document.getElementById('admin-trigger').style.color = "red";
-            document.getElementById('admin-trigger').textContent = "Admin Active";
-            alert("管理者模式已開啟");
-            if (currentView === 'wall' && currentTargetUser) {
-                loadMessages(currentTargetUser.id);
+    function setupEventListeners() {
+        activeCard.onclick = () => {
+            activeCard.classList.toggle('flipped');
+        };
+
+        document.querySelector('.card-modal-backdrop').onclick = () => {
+            cardModal.style.display = 'none';
+            activeCard.classList.remove('flipped');
+        };
+
+        document.getElementById('admin-trigger').onclick = () => {
+            const pwd = prompt("請輸入管理者密碼:");
+            if (pwd === "teacher123") {
+                isAdmin = true;
+                document.getElementById('admin-trigger').style.color = "red";
+                document.getElementById('admin-trigger').textContent = "Admin Active";
+                alert("管理者模式已開啟");
+                if (currentView === 'wall' && currentTargetUser) {
+                    loadMessages(currentTargetUser.id);
+                }
             }
+        };
+    }
+
+    // --- ADMIN ---
+
+    window.deleteMessage = async (msgKey) => {
+        if (!confirm("確定要刪除這張明信片嗎？無法復原喔！")) return;
+        try {
+            await remove(ref(db, `messages/${currentTargetUser.id}/${msgKey}`));
+        } catch (e) {
+            alert("刪除失敗");
         }
     };
-}
 
-// --- ADMIN ---
-
-window.deleteMessage = async (msgKey) => {
-    if (!confirm("確定要刪除這張明信片嗎？無法復原喔！")) return;
-    try {
-        await remove(ref(db, `messages/${currentTargetUser.id}/${msgKey}`));
-    } catch (e) {
-        alert("刪除失敗");
-    }
-};
-
-// Start
-init();
+    // Start
+    init();
